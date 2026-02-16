@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel Auto Deployer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #242424;
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            min-height: 100vh;
+            padding: 40px 20px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        .header { text-align: center; margin-bottom: 50px; animation: slideIn 0.8s ease-out; }
+        h1 { color: white; font-size: 36px; margin-bottom: 10px; font-weight: 600; }
+        .subtitle { color: #888; font-size: 16px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .card { background: #2d2d2d; padding: 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border: 1px solid #3a3a3a; animation: fadeIn 1s ease-out 0.3s backwards; }
+        .section { margin-bottom: 30px; }
+        .section:last-child { margin-bottom: 0; }
+        h2 { color: #ffffff; margin-bottom: 20px; font-size: 20px; font-weight: 600; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #cccccc; font-weight: 500; font-size: 14px; }
+        input[type="text"] { width: 100%; padding: 14px 16px; border: 2px solid #3a3a3a; border-radius: 10px; font-size: 15px; font-family: inherit; transition: all 0.3s; background: #1a1a1a; color: #ffffff; }
+        input[type="text"]:focus { outline: none; border-color: #ffffff; background: #222222; }
+        input[type="text"]::placeholder { color: #666666; }
+
+        .url-preview { margin-top: 10px; padding: 10px 14px; background: #1a1a1a; border-radius: 8px; font-size: 13px; border: 1px solid #333; display: flex; align-items: center; gap: 8px; }
+        .url-preview .dot { width: 8px; height: 8px; border-radius: 50%; background: #444; flex-shrink: 0; transition: all 0.3s; }
+        .url-preview .dot.active { background: #4fc3f7; box-shadow: 0 0 6px #4fc3f7; }
+        .url-preview .url-text { color: #4fc3f7; font-family: monospace; word-break: break-all; }
+        .url-preview .url-text.empty { color: #444; }
+        .url-hint { margin-top: 6px; font-size: 11px; color: #555; }
+
+        .limit-info { background: #1a2a3a; border: 2px solid #2a4a5a; border-radius: 10px; padding: 15px; margin-bottom: 20px; color: #96d4e0; font-size: 14px; text-align: center; animation: fadeIn 1.2s ease-out 0.5s backwards; }
+        .limit-bar { width: 100%; height: 8px; background: #1a1a1a; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .limit-bar-fill { height: 100%; background: linear-gradient(90deg, #4fc3f7, #2196f3); border-radius: 4px; transition: width 0.3s; }
+        .limit-bar-fill.warning { background: linear-gradient(90deg, #ffa726, #ff9800); }
+        .limit-bar-fill.danger { background: linear-gradient(90deg, #ef5350, #f44336); }
+
+        .cooldown-box { background: #3a1a2a; border: 2px solid #5a2a4a; border-radius: 10px; padding: 15px; margin-bottom: 20px; color: #f48fb1; font-size: 14px; text-align: center; display: none; animation: fadeIn 0.4s ease-out; }
+        .cooldown-box.active { display: block; }
+        .cooldown-timer { font-size: 24px; font-weight: 600; margin-top: 8px; color: #ff4081; }
+
+        .info-box { background: #3a2f1a; border: 2px solid #5a4a2a; border-radius: 10px; padding: 15px; margin-bottom: 20px; color: #e0c896; font-size: 14px; animation: fadeIn 1.2s ease-out 0.5s backwards; }
+
+        .file-upload { position: relative; display: block; width: 100%; }
+        .file-upload input[type="file"] { display: none; }
+        .file-upload-label { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; padding: 40px 20px; border: 3px dashed #3a3a3a; border-radius: 10px; background: #1a1a1a; cursor: pointer; transition: all 0.3s; text-align: center; color: #888888; }
+        .file-upload-label:hover { border-color: #ffffff; background: #222222; }
+        .file-upload-label.active { border-color: #ffffff; background: #2a2a2a; }
+        .file-upload-icon { font-size: 48px; color: #666666; }
+        .file-upload-text { font-weight: 600; margin-bottom: 5px; color: #cccccc; }
+        .file-upload-hint { font-size: 13px; color: #666666; }
+        .file-info { margin-top: 10px; padding: 12px; background: #1e4620; border-radius: 8px; color: #7bc67e; font-size: 14px; display: none; border: 1px solid #2d5a2f; }
+        .file-info.show { display: block; }
+
+        button { width: 100%; padding: 16px 24px; background: white; color: #242424; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        button:hover { background: #f0f0f0; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255,255,255,0.3); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #242424; border-radius: 50%; border-top-color: transparent; animation: spin 0.6s linear infinite; }
+
+        .response { margin-top: 20px; padding: 20px; border-radius: 10px; display: none; animation: fadeIn 0.4s ease-out; }
+        .response.show { display: block; }
+        .response.success { background: #1e4620; color: #7bc67e; border: 2px solid #2d5a2f; }
+        .response.error { background: #4a1f1f; color: #f48fb1; border: 2px solid #5a2d2d; }
+        .result-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; margin-bottom: 4px; }
+        .result-url { padding: 10px 14px; background: #1a1a1a; border-radius: 8px; word-break: break-all; margin-bottom: 10px; }
+        .result-url a { color: #4fc3f7; text-decoration: none; font-weight: 600; font-family: monospace; }
+        .result-url a:hover { text-decoration: underline; }
+        .result-note { font-size: 12px; opacity: 0.7; margin-top: 8px; }
+
+        @media (max-width: 768px) { h1 { font-size: 28px; } .card { padding: 25px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Vercel Auto Deployer</h1>
+        <p class="subtitle">Deploy website kamu ke Vercel dengan mudah</p>
+    </div>
+    <div class="container">
+        <div class="card">
+
+            <div class="limit-info">
+                <div><strong>Deployment Limit:</strong> <span id="deployCount">0</span> / 20 hari ini</div>
+                <div class="limit-bar"><div class="limit-bar-fill" id="limitBar" style="width: 0%"></div></div>
+                <div style="font-size: 12px; margin-top: 8px; color: #888;">Reset dalam <span id="resetTime">--:--:--</span></div>
+            </div>
+
+            <div class="info-box">
+                <strong>Info:</strong> Ketik nama bebas, sistem akan generate URL unik otomatis. Upload file HTML lalu klik Deploy.
+            </div>
+
+            <div class="cooldown-box" id="cooldownBox">
+                <div><strong>Cooldown Aktif</strong></div>
+                <div>Tunggu sebentar sebelum deployment berikutnya</div>
+                <div class="cooldown-timer" id="cooldownTimer">00:00</div>
+            </div>
+
+            <div class="section">
+                <h2>Nama Project</h2>
+                <div class="input-group">
+                    <label for="projectName">Nama (bebas, boleh pakai spasi):</label>
+                    <input type="text" id="projectName" placeholder="contoh: Website Keren Ku" oninput="updatePreview()">
+                    <div class="url-preview">
+                        <div class="dot" id="previewDot"></div>
+                        <span class="url-text empty" id="previewUrl">Ketik nama untuk melihat preview URL...</span>
+                    </div>
+                    <div class="url-hint">* Suffix unik akan ditambahkan otomatis saat deploy</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Upload File</h2>
+                <div class="file-upload">
+                    <input type="file" id="fileInput" accept=".html" onchange="handleFileSelect(event)">
+                    <label for="fileInput" class="file-upload-label" id="fileLabel">
+                        <div class="file-upload-icon">&#8682;</div>
+                        <div class="file-upload-text">Pilih file HTML</div>
+                        <div class="file-upload-hint">Klik atau drag & drop file di sini</div>
+                    </label>
+                </div>
+                <div id="fileInfo" class="file-info"></div>
+            </div>
+
+            <button onclick="deployToVercel()" id="deployBtn">
+                <span>Deploy ke Vercel</span>
+            </button>
+
+            <div id="response" class="response"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let selectedFileBase64 = null;
+
+        let globalData = {
+            count: 0,
+            resetDate: new Date(Date.now() + 86400000).toISOString(),
+            cooldownRemaining: 0
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchStatus();
+            startResetTimer();
+            startCooldownTimer();
+        });
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/deploy');
+                if (res.ok) {
+                    const data = await res.json();
+                    globalData.count = data.count || 0;
+                    globalData.resetDate = data.resetDate || globalData.resetDate;
+                    globalData.cooldownRemaining = data.cooldownRemaining || 0;
+                    updateLimitDisplay();
+                    updateCooldownDisplay();
+                }
+            } catch (err) {
+                console.error('Gagal fetch status:', err);
+            }
+        }
+
+        function updateLimitDisplay() {
+            const percentage = (globalData.count / 20) * 100;
+            const countEl = document.getElementById('deployCount');
+            const barEl = document.getElementById('limitBar');
+            if (countEl) countEl.textContent = globalData.count;
+            if (barEl) {
+                barEl.style.width = percentage + '%';
+                barEl.classList.remove('warning', 'danger');
+                if (percentage >= 90) barEl.classList.add('danger');
+                else if (percentage >= 70) barEl.classList.add('warning');
+            }
+        }
+
+        function updateCooldownDisplay() {
+            const cooldownBox = document.getElementById('cooldownBox');
+            const deployBtn = document.getElementById('deployBtn');
+            if (!cooldownBox || !deployBtn) return;
+            if (globalData.cooldownRemaining > 0) {
+                cooldownBox.classList.add('active');
+                deployBtn.disabled = true;
+            } else {
+                cooldownBox.classList.remove('active');
+                if (!deployBtn.querySelector('.loading')) deployBtn.disabled = false;
+            }
+        }
+
+        function startCooldownTimer() {
+            setInterval(() => {
+                if (globalData.cooldownRemaining > 0) {
+                    const m = Math.floor(globalData.cooldownRemaining / 60);
+                    const s = globalData.cooldownRemaining % 60;
+                    const timerEl = document.getElementById('cooldownTimer');
+                    if (timerEl) timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    globalData.cooldownRemaining--;
+                }
+                updateCooldownDisplay();
+            }, 1000);
+        }
+
+        function startResetTimer() {
+            setInterval(() => {
+                const diff = new Date(globalData.resetDate) - new Date();
+                if (diff <= 0) { fetchStatus(); return; }
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                const el = document.getElementById('resetTime');
+                if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }, 1000);
+            setInterval(fetchStatus, 30000);
+        }
+
+        function updatePreview() {
+            const input = document.getElementById('projectName').value;
+            const previewUrl = document.getElementById('previewUrl');
+            const previewDot = document.getElementById('previewDot');
+
+            if (!input.trim()) {
+                previewUrl.textContent = 'Ketik nama untuk melihat preview URL...';
+                previewUrl.classList.add('empty');
+                previewDot.classList.remove('active');
+                return;
+            }
+
+            const cleaned = input.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 30);
+            previewUrl.textContent = `https://${cleaned}-xxxxxx.vercel.app`;
+            previewUrl.classList.remove('empty');
+            previewDot.classList.add('active');
+        }
+
+        const fileLabel = document.getElementById('fileLabel');
+        ['dragenter','dragover','dragleave','drop'].forEach(ev => {
+            fileLabel.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter','dragover'].forEach(ev => fileLabel.addEventListener(ev, () => fileLabel.classList.add('active')));
+        ['dragleave','drop'].forEach(ev => fileLabel.addEventListener(ev, () => fileLabel.classList.remove('active')));
+        fileLabel.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('fileInput').files = files;
+                handleFileSelect({ target: { files } });
+            }
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const fileInfo = document.getElementById('fileInfo');
+            if (!file) return;
+            if (!file.name.endsWith('.html')) {
+                showResponse('error', 'Hanya file HTML yang didukung saat ini.');
+                return;
+            }
+            selectedFile = file;
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            fileInfo.innerHTML = `File terpilih: <strong>${file.name}</strong> (${sizeMB} MB)`;
+            fileInfo.classList.add('show');
+
+            const reader = new FileReader();
+            reader.onload = (e) => { selectedFileBase64 = e.target.result.split(',')[1]; };
+            reader.readAsDataURL(file);
+        }
+
+        async function deployToVercel() {
+            const name = document.getElementById('projectName').value.trim();
+            const deployBtn = document.getElementById('deployBtn');
+
+            if (!name) { showResponse('error', 'Nama project tidak boleh kosong.'); return; }
+            if (!selectedFile || !selectedFileBase64) { showResponse('error', 'Pilih file HTML terlebih dahulu.'); return; }
+            if (globalData.count >= 20) { showResponse('error', 'Limit deployment harian tercapai. Coba lagi besok.'); return; }
+            if (globalData.cooldownRemaining > 0) { showResponse('error', `Cooldown aktif. Tunggu ${Math.ceil(globalData.cooldownRemaining / 60)} menit lagi.`); return; }
+
+            deployBtn.disabled = true;
+            deployBtn.innerHTML = '<div class="loading"></div><span>Deploying...</span>';
+
+            try {
+                const response = await fetch('/api/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, fileData: selectedFileBase64, fileName: selectedFile.name })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    globalData.count = data.deploymentCount ?? (globalData.count + 1);
+                    globalData.cooldownRemaining = data.cooldownSeconds ?? 0;
+                    updateLimitDisplay();
+                    updateCooldownDisplay();
+
+                    document.getElementById('previewUrl').textContent = data.url;
+                    document.getElementById('previewUrl').classList.remove('empty');
+                    document.getElementById('previewDot').classList.add('active');
+
+                    showResponse('success', `
+                        <strong>Deployment Berhasil</strong>
+                        <div style="margin-top: 14px;">
+                            <div class="result-label">URL Website</div>
+                            <div class="result-url"><a href="${data.url}" target="_blank">${data.url}</a></div>
+                            <div class="result-note">Website mungkin butuh 1-2 menit untuk aktif sepenuhnya.</div>
+                            <div class="result-note">Sisa deployment hari ini: ${data.remaining ?? (20 - globalData.count)}</div>
+                        </div>
+                    `);
+                } else {
+                    if (data.cooldownRemaining) {
+                        globalData.cooldownRemaining = data.cooldownRemaining;
+                        updateCooldownDisplay();
+                    }
+                    showResponse('error', `Deployment Gagal: ${data.error || 'Unknown error'}`);
+                }
+            } catch (err) {
+                showResponse('error', `Error: ${err.message}`);
+            } finally {
+                deployBtn.innerHTML = '<span>Deploy ke Vercel</span>';
+                if (globalData.cooldownRemaining <= 0) deployBtn.disabled = false;
+            }
+        }
+
+        function showResponse(type, message) {
+            const el = document.getElementById('response');
+            el.className = `response show ${type}`;
+            el.innerHTML = message;
+        }
+    </script>
+</body>
+</html>
