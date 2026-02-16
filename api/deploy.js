@@ -33,21 +33,13 @@ function getCooldownRemaining() {
 }
 
 function generateUniqueName(input) {
-  const cleaned = input
+  return input
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .slice(0, 30);
-
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let suffix = '';
-  for (let i = 0; i < 6; i++) {
-    suffix += chars[Math.floor(Math.random() * chars.length)];
-  }
-
-  return `${cleaned}-${suffix}`;
+    .slice(0, 63);
 }
 
 export default async function handler(req, res) {
