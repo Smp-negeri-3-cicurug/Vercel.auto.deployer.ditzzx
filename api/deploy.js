@@ -1,4 +1,4 @@
-const VERCEL_TOKEN = 'vcp_6ZKghfaK9liccOibTv9tArk7PTa35rrP44neOOBHngJmaoQveT49j4iy';
+const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
 
 const MAX_DEPLOYS_PER_DAY = 20;
 const COOLDOWN_MINUTES = 3;
@@ -66,6 +66,13 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Cek apakah token sudah diset
+    if (!VERCEL_TOKEN) {
+      return res.status(500).json({ 
+        error: 'VERCEL_TOKEN tidak ditemukan. Silakan set environment variable di Vercel dashboard.' 
+      });
+    }
+
     const data = checkAndResetCounter();
 
     if (data.count >= MAX_DEPLOYS_PER_DAY) {
@@ -148,4 +155,4 @@ export default async function handler(req, res) {
     console.error('Error:', error);
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
-                      }
+}
